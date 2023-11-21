@@ -919,13 +919,14 @@ pub fn build(b: *std.build.Builder) void {
     for (headers) |h| lib.installHeader(h, h);
 
     const exe = b.addExecutable(.{
-        .name = "metadata",
+        .name = "ffmpeg",
         .target = target,
         .optimize = optimize,
     });
     exe.addCSourceFiles(.{
-        .files = &.{"doc/examples/metadata.c"},
+        .files = &.{"fftools/ffmpeg.h"},
     });
+    exe.addConfigHeader(config_h);
     exe.linkLibrary(lib);
     exe.strip = true;
     b.installArtifact(exe);
@@ -1058,6 +1059,7 @@ const headers = [_][]const u8{
     "libavutil/intmath.h",
     "libavutil/intreadwrite.h",
     "libavutil/timer.h",
+    "libavutil/thread.h",
     "libavutil/ffversion.h",
 
     "libswscale/swscale.h",
