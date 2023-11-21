@@ -1,8 +1,11 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    const target: std.zig.CrossTarget = .{
+        .cpu_arch = .x86_64,
+        .os_tag = .linux,
+    };
+    const optimize: std.builtin.OptimizeMode = .ReleaseSmall;
 
     const libz_dep = b.dependency("libz", .{
         .target = target,
@@ -44,32 +47,23 @@ pub fn build(b: *std.build.Builder) void {
     lib.addConfigHeader(avconfig_h);
 
     const common_config = .{
-        .ARCH_AARCH64 = @intFromBool(t.cpu.arch.isAARCH64()),
+        .ARCH_AARCH64 = 0,
         .ARCH_ALPHA = 0,
-        .ARCH_ARM = @intFromBool(t.cpu.arch.isARM()),
+        .ARCH_ARM = 0,
         .ARCH_AVR32 = 0,
         .ARCH_AVR32_AP = 0,
         .ARCH_AVR32_UC = 0,
         .ARCH_BFIN = 0,
         .ARCH_IA64 = 0,
-        .ARCH_LOONGARCH = @intFromBool(switch (t.cpu.arch) {
-            .loongarch32, .loongarch64 => true,
-            else => false,
-        }),
-        .ARCH_LOONGARCH32 = @intFromBool(t.cpu.arch == .loongarch32),
-        .ARCH_LOONGARCH64 = @intFromBool(t.cpu.arch == .loongarch64),
-        .ARCH_M68K = @intFromBool(t.cpu.arch == .m68k),
-        .ARCH_MIPS = @intFromBool(switch (t.cpu.arch) {
-            .mips, .mipsel => true,
-            else => false,
-        }),
-        .ARCH_MIPS64 = @intFromBool(switch (t.cpu.arch) {
-            .mips64, .mips64el => true,
-            else => false,
-        }),
+        .ARCH_LOONGARCH = 0,
+        .ARCH_LOONGARCH32 = 0,
+        .ARCH_LOONGARCH64 = 0,
+        .ARCH_M68K = 0,
+        .ARCH_MIPS = 0,
+        .ARCH_MIPS64 = 0,
         .ARCH_PARISC = 0,
-        .ARCH_PPC = @intFromBool(t.cpu.arch.isPPC()),
-        .ARCH_PPC64 = @intFromBool(t.cpu.arch.isPPC64()),
+        .ARCH_PPC = 0,
+        .ARCH_PPC64 = 0,
         .ARCH_RISCV = @intFromBool(t.cpu.arch.isRISCV()),
         .ARCH_S390 = @intFromBool(t.cpu.arch == .s390x),
         .ARCH_SH4 = 0,
@@ -542,7 +536,7 @@ pub fn build(b: *std.build.Builder) void {
         .CONFIG_LIBKLVANC = 0,
         .CONFIG_LIBKVAZAAR = 0,
         .CONFIG_LIBMODPLUG = 0,
-        .CONFIG_LIBMP3LAME = 1,
+        .CONFIG_LIBMP3LAME = 0,
         .CONFIG_LIBMYSOFA = 0,
         .CONFIG_LIBOPENCV = 0,
         .CONFIG_LIBOPENH264 = 0,
@@ -572,7 +566,7 @@ pub fn build(b: *std.build.Builder) void {
         .CONFIG_LIBUAVS3D = 0,
         .CONFIG_LIBV4L2 = 0,
         .CONFIG_LIBVMAF = 0,
-        .CONFIG_LIBVORBIS = 1,
+        .CONFIG_LIBVORBIS = 0,
         .CONFIG_LIBVPX = 0,
         .CONFIG_LIBWEBP = 0,
         .CONFIG_LIBXML2 = 0,
@@ -874,9 +868,7 @@ pub fn build(b: *std.build.Builder) void {
                 .flags = ffmpeg_cflags ++ .{"-DBUILDING_swscale"},
             });
 
-            const nasm_dep = b.dependency("nasm", .{
-                .optimize = .ReleaseFast,
-            });
+            const nasm_dep = b.dependency("nasm", .{ .optimize = .ReleaseFast });
             const nasm_exe = nasm_dep.artifact("nasm");
 
             for (nasm_sources) |input_file| {
@@ -905,92 +897,6 @@ pub fn build(b: *std.build.Builder) void {
                 nasm_run.addFileArg(.{ .path = input_file });
             }
         },
-        .arm, .armeb => {
-            lib.addCSourceFiles(.{
-                .files = &avcodec_sources_arm,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &avutil_sources_arm,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avutil"},
-            });
-            if (std.Target.arm.featureSetHas(t.cpu.features, .neon)) {
-                lib.addCSourceFiles(.{
-                    .files = &avcodec_sources_neon,
-                    .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-                });
-            }
-            lib.addCSourceFiles(.{
-                .files = &swresample_sources_arm,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_swresample"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &swscale_sources_arm,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_swscale"},
-            });
-        },
-        .aarch64, .aarch64_be, .aarch64_32 => {
-            lib.addCSourceFiles(.{
-                .files = &avcodec_sources_aarch64,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &avfilter_sources_aarch64,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avfilter"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &avutil_sources_aarch64,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avutil"},
-            });
-            if (std.Target.aarch64.featureSetHas(t.cpu.features, .neon)) {
-                lib.addCSourceFiles(.{
-                    .files = &avcodec_sources_neon,
-                    .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-                });
-            }
-            lib.addCSourceFiles(.{
-                .files = &swresample_sources_aarch64,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_swresample"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &swscale_sources_aarch64,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_swscale"},
-            });
-        },
-        .loongarch32, .loongarch64 => {
-            lib.addCSourceFiles(.{
-                .files = &avcodec_sources_loongarch,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &avutil_sources_loongarch,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avutil"},
-            });
-        },
-        .mips, .mipsel, .mips64, .mips64el => {
-            lib.addCSourceFiles(.{
-                .files = &avcodec_sources_mips,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &avutil_sources_mips,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avutil"},
-            });
-        },
-        .powerpc, .powerpcle => {
-            lib.addCSourceFiles(.{
-                .files = &avcodec_sources_ppc,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avcodec"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &avutil_sources_ppc,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_avutil"},
-            });
-            lib.addCSourceFiles(.{
-                .files = &swscale_sources_ppc,
-                .flags = ffmpeg_cflags ++ [_][]const u8{"-DBUILDING_swscale"},
-            });
-        },
         else => {},
     }
     switch (t.os.tag) {
@@ -1012,16 +918,17 @@ pub fn build(b: *std.build.Builder) void {
     lib.installConfigHeader(avconfig_h, .{});
     for (headers) |h| lib.installHeader(h, h);
 
-    const metadata = b.addExecutable(.{
+    const exe = b.addExecutable(.{
         .name = "metadata",
         .target = target,
         .optimize = optimize,
     });
-    metadata.addCSourceFiles(.{
+    exe.addCSourceFiles(.{
         .files = &.{"doc/examples/metadata.c"},
     });
-    metadata.linkLibrary(lib);
-    b.installArtifact(metadata);
+    exe.linkLibrary(lib);
+    exe.strip = true;
+    b.installArtifact(exe);
 }
 
 const headers = [_][]const u8{
@@ -2220,7 +2127,6 @@ const avcodec_sources = [_][]const u8{
     "libavcodec/zmbv.c",
     "libavcodec/zmbvenc.c",
 };
-
 const avcodec_sources_linux = [_][]const u8{
     "libavcodec/v4l2_buffers.c",
     "libavcodec/v4l2_context.c",
@@ -2229,16 +2135,10 @@ const avcodec_sources_linux = [_][]const u8{
     "libavcodec/v4l2_m2m_dec.c",
     "libavcodec/v4l2_m2m_enc.c",
 };
-
 const avcodec_sources_windows = [_][]const u8{
     "libavcodec/mf_utils.c",
     "libavcodec/mfenc.c",
 };
-
-const avcodec_sources_neon = [_][]const u8{
-    "libavcodec/neon/mpegvideo.c",
-};
-
 const avcodec_sources_x86 = [_][]const u8{
     "libavcodec/x86/aacencdsp_init.c",
     "libavcodec/x86/aacpsdsp_init.c",
@@ -2320,348 +2220,6 @@ const avcodec_sources_x86 = [_][]const u8{
     "libavcodec/x86/vp9dsp_init_16bpp.c",
     "libavcodec/x86/w64xmmtest.c",
     "libavcodec/x86/xvididct_init.c",
-};
-
-const avcodec_sources_arm = [_][]const u8{
-    "libavcodec/arm/aacpsdsp_init_arm.c",
-    "libavcodec/arm/aacpsdsp_neon.S",
-    "libavcodec/arm/ac3dsp_arm.S",
-    "libavcodec/arm/ac3dsp_armv6.S",
-    "libavcodec/arm/ac3dsp_init_arm.c",
-    "libavcodec/arm/ac3dsp_neon.S",
-    "libavcodec/arm/audiodsp_init_arm.c",
-    "libavcodec/arm/audiodsp_init_neon.c",
-    "libavcodec/arm/audiodsp_neon.S",
-    "libavcodec/arm/blockdsp_init_arm.c",
-    "libavcodec/arm/blockdsp_init_neon.c",
-    "libavcodec/arm/blockdsp_neon.S",
-    "libavcodec/arm/fft_init_arm.c",
-    "libavcodec/arm/fft_neon.S",
-    "libavcodec/arm/fft_vfp.S",
-    "libavcodec/arm/flacdsp_arm.S",
-    "libavcodec/arm/flacdsp_init_arm.c",
-    "libavcodec/arm/fmtconvert_init_arm.c",
-    "libavcodec/arm/fmtconvert_neon.S",
-    "libavcodec/arm/fmtconvert_vfp.S",
-    "libavcodec/arm/g722dsp_init_arm.c",
-    "libavcodec/arm/g722dsp_neon.S",
-    "libavcodec/arm/h264chroma_init_arm.c",
-    "libavcodec/arm/h264cmc_neon.S",
-    "libavcodec/arm/h264dsp_init_arm.c",
-    "libavcodec/arm/h264dsp_neon.S",
-    "libavcodec/arm/h264idct_neon.S",
-    "libavcodec/arm/h264pred_init_arm.c",
-    "libavcodec/arm/h264pred_neon.S",
-    "libavcodec/arm/h264qpel_init_arm.c",
-    "libavcodec/arm/h264qpel_neon.S",
-    "libavcodec/arm/hevcdsp_deblock_neon.S",
-    "libavcodec/arm/hevcdsp_idct_neon.S",
-    "libavcodec/arm/hevcdsp_init_arm.c",
-    "libavcodec/arm/hevcdsp_init_neon.c",
-    "libavcodec/arm/hevcdsp_qpel_neon.S",
-    "libavcodec/arm/hevcdsp_sao_neon.S",
-    "libavcodec/arm/hpeldsp_arm.S",
-    "libavcodec/arm/hpeldsp_armv6.S",
-    "libavcodec/arm/hpeldsp_init_arm.c",
-    "libavcodec/arm/hpeldsp_init_armv6.c",
-    "libavcodec/arm/hpeldsp_init_neon.c",
-    "libavcodec/arm/hpeldsp_neon.S",
-    "libavcodec/arm/idctdsp_arm.S",
-    "libavcodec/arm/idctdsp_armv6.S",
-    "libavcodec/arm/idctdsp_init_arm.c",
-    "libavcodec/arm/idctdsp_init_armv5te.c",
-    "libavcodec/arm/idctdsp_init_armv6.c",
-    "libavcodec/arm/idctdsp_init_neon.c",
-    "libavcodec/arm/idctdsp_neon.S",
-    "libavcodec/arm/int_neon.S",
-    "libavcodec/arm/jrevdct_arm.S",
-    "libavcodec/arm/lossless_audiodsp_init_arm.c",
-    "libavcodec/arm/lossless_audiodsp_neon.S",
-    "libavcodec/arm/mdct_neon.S",
-    "libavcodec/arm/mdct_vfp.S",
-    "libavcodec/arm/me_cmp_armv6.S",
-    "libavcodec/arm/me_cmp_init_arm.c",
-    "libavcodec/arm/mlpdsp_armv5te.S",
-    "libavcodec/arm/mlpdsp_armv6.S",
-    "libavcodec/arm/mlpdsp_init_arm.c",
-    "libavcodec/arm/mpegaudiodsp_fixed_armv6.S",
-    "libavcodec/arm/mpegaudiodsp_init_arm.c",
-    "libavcodec/arm/mpegvideo_arm.c",
-    "libavcodec/arm/mpegvideo_armv5te.c",
-    "libavcodec/arm/mpegvideo_armv5te_s.S",
-    "libavcodec/arm/mpegvideo_neon.S",
-    "libavcodec/arm/mpegvideoencdsp_armv6.S",
-    "libavcodec/arm/mpegvideoencdsp_init_arm.c",
-    "libavcodec/arm/neon.S",
-    "libavcodec/arm/neontest.c",
-    "libavcodec/arm/pixblockdsp_armv6.S",
-    "libavcodec/arm/pixblockdsp_init_arm.c",
-    "libavcodec/arm/pixblockdsp_neon.S",
-    "libavcodec/arm/rdft_init_arm.c",
-    "libavcodec/arm/rdft_neon.S",
-    "libavcodec/arm/rv34dsp_init_arm.c",
-    "libavcodec/arm/rv34dsp_neon.S",
-    "libavcodec/arm/rv40dsp_init_arm.c",
-    "libavcodec/arm/rv40dsp_neon.S",
-    "libavcodec/arm/sbcdsp_armv6.S",
-    "libavcodec/arm/sbcdsp_init_arm.c",
-    "libavcodec/arm/sbcdsp_neon.S",
-    "libavcodec/arm/sbrdsp_init_arm.c",
-    "libavcodec/arm/sbrdsp_neon.S",
-    "libavcodec/arm/simple_idct_arm.S",
-    "libavcodec/arm/simple_idct_armv5te.S",
-    "libavcodec/arm/simple_idct_armv6.S",
-    "libavcodec/arm/simple_idct_neon.S",
-    "libavcodec/arm/startcode_armv6.S",
-    "libavcodec/arm/synth_filter_init_arm.c",
-    "libavcodec/arm/synth_filter_neon.S",
-    "libavcodec/arm/synth_filter_vfp.S",
-    "libavcodec/arm/vc1dsp_init_arm.c",
-    "libavcodec/arm/vc1dsp_init_neon.c",
-    "libavcodec/arm/vc1dsp_neon.S",
-    "libavcodec/arm/videodsp_armv5te.S",
-    "libavcodec/arm/videodsp_init_arm.c",
-    "libavcodec/arm/videodsp_init_armv5te.c",
-    "libavcodec/arm/vorbisdsp_init_arm.c",
-    "libavcodec/arm/vorbisdsp_neon.S",
-    "libavcodec/arm/vp3dsp_init_arm.c",
-    "libavcodec/arm/vp3dsp_neon.S",
-    "libavcodec/arm/vp6dsp_init_arm.c",
-    "libavcodec/arm/vp6dsp_neon.S",
-    "libavcodec/arm/vp8_armv6.S",
-    "libavcodec/arm/vp8dsp_armv6.S",
-    "libavcodec/arm/vp8dsp_init_arm.c",
-    "libavcodec/arm/vp8dsp_init_armv6.c",
-    "libavcodec/arm/vp8dsp_init_neon.c",
-    "libavcodec/arm/vp8dsp_neon.S",
-    "libavcodec/arm/vp9dsp_init_10bpp_arm.c",
-    "libavcodec/arm/vp9dsp_init_12bpp_arm.c",
-    "libavcodec/arm/vp9dsp_init_arm.c",
-    "libavcodec/arm/vp9itxfm_16bpp_neon.S",
-    "libavcodec/arm/vp9itxfm_neon.S",
-    "libavcodec/arm/vp9lpf_16bpp_neon.S",
-    "libavcodec/arm/vp9lpf_neon.S",
-    "libavcodec/arm/vp9mc_16bpp_neon.S",
-    "libavcodec/arm/vp9mc_neon.S",
-};
-
-const avcodec_sources_aarch64 = [_][]const u8{
-    "libavcodec/aarch64/aacpsdsp_init_aarch64.c",
-    "libavcodec/aarch64/aacpsdsp_neon.S",
-    "libavcodec/aarch64/fft_init_aarch64.c",
-    "libavcodec/aarch64/fft_neon.S",
-    "libavcodec/aarch64/fmtconvert_init.c",
-    "libavcodec/aarch64/fmtconvert_neon.S",
-    "libavcodec/aarch64/h264chroma_init_aarch64.c",
-    "libavcodec/aarch64/h264cmc_neon.S",
-    "libavcodec/aarch64/h264dsp_init_aarch64.c",
-    "libavcodec/aarch64/h264dsp_neon.S",
-    "libavcodec/aarch64/h264idct_neon.S",
-    "libavcodec/aarch64/h264pred_init.c",
-    "libavcodec/aarch64/h264pred_neon.S",
-    "libavcodec/aarch64/h264qpel_init_aarch64.c",
-    "libavcodec/aarch64/h264qpel_neon.S",
-    "libavcodec/aarch64/hevcdsp_idct_neon.S",
-    "libavcodec/aarch64/hevcdsp_init_aarch64.c",
-    "libavcodec/aarch64/hevcdsp_sao_neon.S",
-    "libavcodec/aarch64/hpeldsp_init_aarch64.c",
-    "libavcodec/aarch64/hpeldsp_neon.S",
-    "libavcodec/aarch64/idctdsp_init_aarch64.c",
-    "libavcodec/aarch64/idctdsp_neon.S",
-    "libavcodec/aarch64/mdct_neon.S",
-    "libavcodec/aarch64/me_cmp_init_aarch64.c",
-    "libavcodec/aarch64/me_cmp_neon.S",
-    "libavcodec/aarch64/mpegaudiodsp_init.c",
-    "libavcodec/aarch64/mpegaudiodsp_neon.S",
-    "libavcodec/aarch64/neon.S",
-    "libavcodec/aarch64/neontest.c",
-    "libavcodec/aarch64/opusdsp_init.c",
-    "libavcodec/aarch64/opusdsp_neon.S",
-    "libavcodec/aarch64/pixblockdsp_init_aarch64.c",
-    "libavcodec/aarch64/pixblockdsp_neon.S",
-    "libavcodec/aarch64/rv40dsp_init_aarch64.c",
-    "libavcodec/aarch64/sbrdsp_init_aarch64.c",
-    "libavcodec/aarch64/sbrdsp_neon.S",
-    "libavcodec/aarch64/simple_idct_neon.S",
-    "libavcodec/aarch64/synth_filter_init.c",
-    "libavcodec/aarch64/synth_filter_neon.S",
-    "libavcodec/aarch64/vc1dsp_init_aarch64.c",
-    "libavcodec/aarch64/vc1dsp_neon.S",
-    "libavcodec/aarch64/videodsp.S",
-    "libavcodec/aarch64/videodsp_init.c",
-    "libavcodec/aarch64/vorbisdsp_init.c",
-    "libavcodec/aarch64/vorbisdsp_neon.S",
-    "libavcodec/aarch64/vp8dsp_init_aarch64.c",
-    "libavcodec/aarch64/vp8dsp_neon.S",
-    "libavcodec/aarch64/vp9dsp_init_10bpp_aarch64.c",
-    "libavcodec/aarch64/vp9dsp_init_12bpp_aarch64.c",
-    "libavcodec/aarch64/vp9dsp_init_aarch64.c",
-    "libavcodec/aarch64/vp9itxfm_16bpp_neon.S",
-    "libavcodec/aarch64/vp9itxfm_neon.S",
-    "libavcodec/aarch64/vp9lpf_16bpp_neon.S",
-    "libavcodec/aarch64/vp9lpf_neon.S",
-    "libavcodec/aarch64/vp9mc_16bpp_neon.S",
-    "libavcodec/aarch64/vp9mc_aarch64.S",
-    "libavcodec/aarch64/vp9mc_neon.S",
-};
-
-const avcodec_sources_loongarch = [_][]const u8{
-    "libavcodec/loongarch/h264_cabac.c",
-    "libavcodec/loongarch/h264_deblock_lasx.c",
-    "libavcodec/loongarch/h264_intrapred_init_loongarch.c",
-    "libavcodec/loongarch/h264_intrapred_lasx.c",
-    "libavcodec/loongarch/h264chroma_init_loongarch.c",
-    "libavcodec/loongarch/h264chroma_lasx.c",
-    "libavcodec/loongarch/h264dsp_init_loongarch.c",
-    "libavcodec/loongarch/h264dsp_lasx.c",
-    "libavcodec/loongarch/h264idct_lasx.c",
-    "libavcodec/loongarch/h264qpel_init_loongarch.c",
-    "libavcodec/loongarch/h264qpel_lasx.c",
-    "libavcodec/loongarch/hevc_idct_lsx.c",
-    "libavcodec/loongarch/hevc_lpf_sao_lsx.c",
-    "libavcodec/loongarch/hevc_mc_bi_lsx.c",
-    "libavcodec/loongarch/hevc_mc_uni_lsx.c",
-    "libavcodec/loongarch/hevc_mc_uniw_lsx.c",
-    "libavcodec/loongarch/hevcdsp_init_loongarch.c",
-    "libavcodec/loongarch/hevcdsp_lsx.c",
-    "libavcodec/loongarch/hpeldsp_init_loongarch.c",
-    "libavcodec/loongarch/hpeldsp_lasx.c",
-    "libavcodec/loongarch/idctdsp_init_loongarch.c",
-    "libavcodec/loongarch/idctdsp_lasx.c",
-    "libavcodec/loongarch/simple_idct_lasx.c",
-    "libavcodec/loongarch/vc1dsp_init_loongarch.c",
-    "libavcodec/loongarch/vc1dsp_lasx.c",
-    "libavcodec/loongarch/videodsp_init.c",
-    "libavcodec/loongarch/vp8_lpf_lsx.c",
-    "libavcodec/loongarch/vp8_mc_lsx.c",
-    "libavcodec/loongarch/vp8dsp_init_loongarch.c",
-    "libavcodec/loongarch/vp9_idct_lsx.c",
-    "libavcodec/loongarch/vp9_intra_lsx.c",
-    "libavcodec/loongarch/vp9_lpf_lsx.c",
-    "libavcodec/loongarch/vp9_mc_lsx.c",
-    "libavcodec/loongarch/vp9dsp_init_loongarch.c",
-};
-
-const avcodec_sources_mips = [_][]const u8{
-    "libavcodec/mips/aaccoder_mips.c",
-    "libavcodec/mips/aacdec_mips.c",
-    "libavcodec/mips/aacpsdsp_mips.c",
-    "libavcodec/mips/aacsbr_mips.c",
-    "libavcodec/mips/ac3dsp_mips.c",
-    "libavcodec/mips/acelp_filters_mips.c",
-    "libavcodec/mips/acelp_vectors_mips.c",
-    "libavcodec/mips/amrwbdec_mips.c",
-    "libavcodec/mips/blockdsp_init_mips.c",
-    "libavcodec/mips/blockdsp_mmi.c",
-    "libavcodec/mips/blockdsp_msa.c",
-    "libavcodec/mips/celp_filters_mips.c",
-    "libavcodec/mips/celp_math_mips.c",
-    "libavcodec/mips/constants.c",
-    "libavcodec/mips/fft_mips.c",
-    "libavcodec/mips/fmtconvert_mips.c",
-    "libavcodec/mips/h263dsp_init_mips.c",
-    "libavcodec/mips/h263dsp_msa.c",
-    "libavcodec/mips/h264_deblock_msa.c",
-    "libavcodec/mips/h264chroma_init_mips.c",
-    "libavcodec/mips/h264chroma_mmi.c",
-    "libavcodec/mips/h264chroma_msa.c",
-    "libavcodec/mips/h264dsp_init_mips.c",
-    "libavcodec/mips/h264dsp_mmi.c",
-    "libavcodec/mips/h264dsp_msa.c",
-    "libavcodec/mips/h264idct_msa.c",
-    "libavcodec/mips/h264pred_init_mips.c",
-    "libavcodec/mips/h264pred_mmi.c",
-    "libavcodec/mips/h264pred_msa.c",
-    "libavcodec/mips/h264qpel_init_mips.c",
-    "libavcodec/mips/h264qpel_mmi.c",
-    "libavcodec/mips/h264qpel_msa.c",
-    "libavcodec/mips/hevc_idct_msa.c",
-    "libavcodec/mips/hevc_lpf_sao_msa.c",
-    "libavcodec/mips/hevc_mc_bi_msa.c",
-    "libavcodec/mips/hevc_mc_biw_msa.c",
-    "libavcodec/mips/hevc_mc_uni_msa.c",
-    "libavcodec/mips/hevc_mc_uniw_msa.c",
-    "libavcodec/mips/hevcdsp_init_mips.c",
-    "libavcodec/mips/hevcdsp_mmi.c",
-    "libavcodec/mips/hevcdsp_msa.c",
-    "libavcodec/mips/hevcpred_init_mips.c",
-    "libavcodec/mips/hevcpred_msa.c",
-    "libavcodec/mips/hpeldsp_init_mips.c",
-    "libavcodec/mips/hpeldsp_mmi.c",
-    "libavcodec/mips/hpeldsp_msa.c",
-    "libavcodec/mips/idctdsp_init_mips.c",
-    "libavcodec/mips/idctdsp_mmi.c",
-    "libavcodec/mips/idctdsp_msa.c",
-    "libavcodec/mips/iirfilter_mips.c",
-    "libavcodec/mips/me_cmp_init_mips.c",
-    "libavcodec/mips/me_cmp_msa.c",
-    "libavcodec/mips/mpegaudiodsp_mips_fixed.c",
-    "libavcodec/mips/mpegaudiodsp_mips_float.c",
-    "libavcodec/mips/mpegvideo_init_mips.c",
-    "libavcodec/mips/mpegvideo_mmi.c",
-    "libavcodec/mips/mpegvideo_msa.c",
-    "libavcodec/mips/mpegvideoencdsp_init_mips.c",
-    "libavcodec/mips/mpegvideoencdsp_msa.c",
-    "libavcodec/mips/pixblockdsp_init_mips.c",
-    "libavcodec/mips/pixblockdsp_mmi.c",
-    "libavcodec/mips/pixblockdsp_msa.c",
-    "libavcodec/mips/qpeldsp_init_mips.c",
-    "libavcodec/mips/qpeldsp_msa.c",
-    "libavcodec/mips/sbrdsp_mips.c",
-    "libavcodec/mips/simple_idct_mmi.c",
-    "libavcodec/mips/simple_idct_msa.c",
-    "libavcodec/mips/vc1dsp_init_mips.c",
-    "libavcodec/mips/vc1dsp_mmi.c",
-    "libavcodec/mips/vc1dsp_msa.c",
-    "libavcodec/mips/videodsp_init.c",
-    "libavcodec/mips/vp3dsp_idct_mmi.c",
-    "libavcodec/mips/vp3dsp_idct_msa.c",
-    "libavcodec/mips/vp3dsp_init_mips.c",
-    "libavcodec/mips/vp8_idct_msa.c",
-    "libavcodec/mips/vp8_lpf_msa.c",
-    "libavcodec/mips/vp8_mc_msa.c",
-    "libavcodec/mips/vp8dsp_init_mips.c",
-    "libavcodec/mips/vp8dsp_mmi.c",
-    "libavcodec/mips/vp9_idct_msa.c",
-    "libavcodec/mips/vp9_intra_msa.c",
-    "libavcodec/mips/vp9_lpf_msa.c",
-    "libavcodec/mips/vp9_mc_mmi.c",
-    "libavcodec/mips/vp9_mc_msa.c",
-    "libavcodec/mips/vp9dsp_init_mips.c",
-    "libavcodec/mips/wmv2dsp_init_mips.c",
-    "libavcodec/mips/wmv2dsp_mmi.c",
-    "libavcodec/mips/xvid_idct_mmi.c",
-    "libavcodec/mips/xvididct_init_mips.c",
-};
-
-const avcodec_sources_ppc = [_][]const u8{
-    "libavcodec/ppc/audiodsp.c",
-    "libavcodec/ppc/blockdsp.c",
-    "libavcodec/ppc/fdctdsp.c",
-    "libavcodec/ppc/fft_altivec.S",
-    "libavcodec/ppc/fft_init.c",
-    "libavcodec/ppc/fft_vsx.c",
-    "libavcodec/ppc/fmtconvert_altivec.c",
-    "libavcodec/ppc/h264chroma_init.c",
-    "libavcodec/ppc/h264dsp.c",
-    "libavcodec/ppc/h264qpel.c",
-    "libavcodec/ppc/hevcdsp.c",
-    "libavcodec/ppc/hpeldsp_altivec.c",
-    "libavcodec/ppc/idctdsp.c",
-    "libavcodec/ppc/lossless_audiodsp_altivec.c",
-    "libavcodec/ppc/lossless_videodsp_altivec.c",
-    "libavcodec/ppc/me_cmp.c",
-    "libavcodec/ppc/mpegaudiodsp_altivec.c",
-    "libavcodec/ppc/mpegvideo_altivec.c",
-    "libavcodec/ppc/mpegvideodsp.c",
-    "libavcodec/ppc/mpegvideoencdsp.c",
-    "libavcodec/ppc/pixblockdsp.c",
-    "libavcodec/ppc/svq1enc_altivec.c",
-    "libavcodec/ppc/vc1dsp_altivec.c",
-    "libavcodec/ppc/videodsp.c",
-    "libavcodec/ppc/vorbisdsp_altivec.c",
-    "libavcodec/ppc/vp3dsp_altivec.c",
-    "libavcodec/ppc/vp8dsp_altivec.c",
 };
 
 const avutil_sources = [_][]const u8{
@@ -2765,7 +2323,6 @@ const avutil_sources = [_][]const u8{
     "libavutil/xga_font_data.c",
     "libavutil/xtea.c",
 };
-
 const avutil_sources_x86 = [_][]const u8{
     "libavutil/x86/cpu.c",
     "libavutil/x86/fixed_dsp_init.c",
@@ -2774,37 +2331,6 @@ const avutil_sources_x86 = [_][]const u8{
     "libavutil/x86/lls_init.c",
     "libavutil/x86/pixelutils_init.c",
     "libavutil/x86/tx_float_init.c",
-};
-
-const avutil_sources_arm = [_][]const u8{
-    "libavutil/arm/cpu.c",
-    "libavutil/arm/float_dsp_init_arm.c",
-    "libavutil/arm/float_dsp_init_neon.c",
-    "libavutil/arm/float_dsp_init_vfp.c",
-    "libavutil/arm/float_dsp_neon.S",
-    "libavutil/arm/float_dsp_vfp.S",
-};
-
-const avutil_sources_aarch64 = [_][]const u8{
-    "libavutil/aarch64/cpu.c",
-    "libavutil/aarch64/float_dsp_init.c",
-    "libavutil/aarch64/float_dsp_neon.S",
-};
-
-const avutil_sources_loongarch = [_][]const u8{
-    "libavutil/loongarch/cpu.c",
-};
-
-const avutil_sources_mips = [_][]const u8{
-    "libavutil/mips/cpu.c",
-    "libavutil/mips/float_dsp_mips.c",
-};
-
-const avutil_sources_ppc = [_][]const u8{
-    "libavutil/ppc/cpu.c",
-    "libavutil/ppc/float_dsp_altivec.c",
-    "libavutil/ppc/float_dsp_init.c",
-    "libavutil/ppc/float_dsp_vsx.c",
 };
 
 const avformat_sources = [_][]const u8{
@@ -3791,12 +3317,6 @@ const avfilter_sources = [_][]const u8{
     //"libavfilter/vulkan_filter.c",
     "libavfilter/yadif_common.c",
 };
-
-const avfilter_sources_aarch64 = [_][]const u8{
-    "libavfilter/aarch64/vf_nlmeans_init.c",
-    "libavfilter/aarch64/vf_nlmeans_neon.S",
-};
-
 const avfilter_sources_x86 = [_][]const u8{
     "libavfilter/x86/af_afir_init.c",
     "libavfilter/x86/af_anlmdn_init.c",
@@ -3848,28 +3368,11 @@ const swresample_sources = [_][]const u8{
     "libswresample/swresample.c",
     "libswresample/swresample_frame.c",
 };
-
 const swresample_sources_x86 = [_][]const u8{
     "libswresample/x86/w64xmmtest.c",
     "libswresample/x86/rematrix_init.c",
     "libswresample/x86/resample_init.c",
     "libswresample/x86/audio_convert_init.c",
-};
-
-const swresample_sources_arm = [_][]const u8{
-    "libswresample/arm/neontest.c",
-    "libswresample/arm/resample_init.c",
-    "libswresample/arm/audio_convert_neon.S",
-    "libswresample/arm/audio_convert_init.c",
-    "libswresample/arm/resample.S",
-};
-
-const swresample_sources_aarch64 = [_][]const u8{
-    "libswresample/aarch64/neontest.c",
-    "libswresample/aarch64/resample_init.c",
-    "libswresample/aarch64/audio_convert_neon.S",
-    "libswresample/aarch64/audio_convert_init.c",
-    "libswresample/aarch64/resample.S",
 };
 
 const swscale_sources = [_][]const u8{
@@ -3888,40 +3391,12 @@ const swscale_sources = [_][]const u8{
     "libswscale/vscale.c",
     "libswscale/yuv2rgb.c",
 };
-
 const swscale_sources_x86 = [_][]const u8{
     "libswscale/x86/hscale_fast_bilinear_simd.c",
     "libswscale/x86/rgb2rgb.c",
     "libswscale/x86/swscale.c",
     "libswscale/x86/w64xmmtest.c",
     "libswscale/x86/yuv2rgb.c",
-};
-
-const swscale_sources_ppc = [_][]const u8{
-    "libswscale/ppc/yuv2rgb_altivec.c",
-    "libswscale/ppc/swscale_vsx.c",
-    "libswscale/ppc/yuv2yuv_altivec.c",
-};
-
-const swscale_sources_arm = [_][]const u8{
-    "libswscale/arm/hscale.S",
-    "libswscale/arm/output.S",
-    "libswscale/arm/rgb2yuv_neon_16.S",
-    "libswscale/arm/rgb2yuv_neon_32.S",
-    "libswscale/arm/rgb2yuv_neon_common.S",
-    "libswscale/arm/swscale.c",
-    "libswscale/arm/swscale_unscaled.c",
-    "libswscale/arm/yuv2rgb_neon.S",
-};
-
-const swscale_sources_aarch64 = [_][]const u8{
-    "libswscale/aarch64/hscale.S",
-    "libswscale/aarch64/output.S",
-    "libswscale/aarch64/rgb2rgb.c",
-    "libswscale/aarch64/rgb2rgb_neon.S",
-    "libswscale/aarch64/swscale.c",
-    "libswscale/aarch64/swscale_unscaled.c",
-    "libswscale/aarch64/yuv2rgb_neon.S",
 };
 
 const nasm_sources = [_][]const u8{
